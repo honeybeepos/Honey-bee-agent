@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1f4a48">
+<link rel="icon" href="icon-192.png">
+<title>লগইন — দোকানের হিসাব খাতা</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1c1a17; --paper:#f6f1e7; --paper-2:#efe7d6; --line:#d8cbb0;
+    --copper:#b5652f; --copper-dark:#8f4c1f; --teal:#1f4a48; --teal-2:#2c625f;
+    --due:#a3372c; --paid:#27633f; --card:#fffdf8;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);background-image:radial-gradient(circle at 1px 1px, rgba(28,26,23,0.06) 1px, transparent 0);background-size:18px 18px;font-family:'Noto Sans Bengali','Space Mono',sans-serif;color:var(--ink);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+  .box{width:100%;max-width:400px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:26px 22px;box-shadow:0 3px 0 var(--line);}
+  h1{font-size:20px;margin:0 0 4px;color:var(--teal);text-align:center;}
+  .sub{font-size:12.5px;color:#8a7f6c;text-align:center;margin:0 0 20px;font-family:'Space Mono',monospace;}
+  .tabs{display:flex;gap:6px;margin-bottom:18px;}
+  .tabs div{flex:1;text-align:center;padding:9px 6px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:13.5px;font-weight:700;color:#6b6153;cursor:pointer;}
+  .tabs div.active{background:var(--teal);color:#fff;border-color:var(--teal);}
+  label{display:block;font-size:12px;color:#6b6153;margin-bottom:4px;font-weight:600;}
+  input{width:100%;padding:11px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;font-family:inherit;font-size:14.5px;color:var(--ink);margin-bottom:12px;}
+  input:focus{outline:2px solid var(--copper);outline-offset:1px;}
+  .btn{width:100%;padding:13px;border:none;border-radius:9px;background:var(--copper);color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .btn:active{background:var(--copper-dark);}
+  .btn:disabled{opacity:0.6;}
+  .msg{margin-top:12px;font-size:13px;padding:10px 12px;border-radius:8px;display:none;}
+  .msg.err{display:block;background:#f5e0dc;color:var(--due);}
+  .msg.ok{display:block;background:#dcf0e8;color:var(--paid);}
+  .panel{display:none;}
+  .panel.active{display:block;}
+  select{width:100%;padding:11px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;font-family:inherit;font-size:14.5px;color:var(--ink);margin-bottom:12px;}
+  select:disabled{background:var(--paper-2);color:#a89e8c;}
+</style>
+</head>
+<body>
+
+<div class="box">
+  <h1>দোকানের হিসাব খাতা</h1>
+  <p class="sub">সিকিউর লগইন সিস্টেম</p>
+
+  <div class="tabs">
+    <div class="tab-sw active" data-p="login">লগইন</div>
+    <div class="tab-sw" data-p="signup">নতুন দোকান নিবন্ধন</div>
+  </div>
+
+  <div class="panel active" id="panel-login">
+    <label>ইমেইল</label>
+    <input type="email" id="loginEmail" placeholder="you@example.com">
+    <label>পাসওয়ার্ড</label>
+    <input type="password" id="loginPass" placeholder="••••••••">
+    <button class="btn" id="loginBtn">লগইন করুন</button>
+    <p style="text-align:center;margin:10px 0 0;">
+      <a href="#" id="forgotLink" style="color:#1f4a48;font-size:12.5px;text-decoration:underline;">পাসওয়ার্ড ভুলে গেছেন?</a>
+    </p>
+    <div class="msg" id="loginMsg"></div>
+  </div>
+
+  <div class="panel" id="panel-signup">
+    <label>দোকানের নাম</label>
+    <input type="text" id="suShopName" placeholder="যেমন: রহিম স্টোর">
+    <label>আপনার নাম</label>
+    <input type="text" id="suName" placeholder="আপনার নাম">
+    <label>ইমেইল</label>
+    <input type="email" id="suEmail" placeholder="you@example.com">
+    <label>পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)</label>
+    <input type="password" id="suPass" placeholder="••••••••">
+
+    <label>জেলা</label>
+    <select id="suDistrict"><option value="">-- জেলা নির্বাচন করুন --</option></select>
+    <label>উপজেলা/থানা</label>
+    <select id="suUpazila" disabled><option value="">-- আগে জেলা নির্বাচন করুন --</option></select>
+    <label>বাজার</label>
+    <select id="suMarket" disabled><option value="">-- আগে উপজেলা নির্বাচন করুন --</option></select>
+    <label>এজেন্ট <span style="font-weight:400; color:#a89e8c;">(এই বাজারে এজেন্ট থাকলে বেছে নিন)</span></label>
+    <select id="suAgent" disabled><option value="">-- বাজার নির্বাচন করুন --</option></select>
+
+    <button class="btn" id="signupBtn">দোকান তৈরি করুন</button>
+    <div class="msg" id="signupMsg"></div>
+  </div>
+</div>
+
+<script src="bd-locations.js"></script>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="firebase-init.js"></script>
+<script>
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("service-worker.js").catch(()=>{});
+}
+
+document.querySelectorAll(".tab-sw").forEach(t=>{
+  t.addEventListener("click", ()=>{
+    document.querySelectorAll(".tab-sw").forEach(x=>x.classList.remove("active"));
+    document.querySelectorAll(".panel").forEach(x=>x.classList.remove("active"));
+    t.classList.add("active");
+    document.getElementById("panel-"+t.dataset.p).classList.add("active");
+  });
+});
+
+function showMsg(id, text, ok){
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className = "msg " + (ok ? "ok" : "err");
+}
+
+/* ==================== জেলা → উপজেলা → বাজার → এজেন্ট কাসকেডিং ==================== */
+function getAllDistricts(){
+  const list = [];
+  Object.values(BD_LOCATIONS).forEach(div => Object.keys(div).forEach(d => list.push(d)));
+  return list.sort((a,b)=> a.localeCompare(b, 'bn'));
+}
+function getUpazilasForDistrict(district){
+  let found = [];
+  Object.values(BD_LOCATIONS).forEach(div => { if(div[district]) found = div[district]; });
+  return found.slice().sort((a,b)=> a.localeCompare(b, 'bn'));
+}
+
+document.getElementById("suDistrict").innerHTML += getAllDistricts().map(d=>`<option value="${d}">${d}</option>`).join("");
+
+document.getElementById("suDistrict").addEventListener("change", (e)=>{
+  const district = e.target.value;
+  const upSel = document.getElementById("suUpazila");
+  const marketSel = document.getElementById("suMarket");
+  const agentSel = document.getElementById("suAgent");
+  marketSel.innerHTML = '<option value="">-- আগে উপজেলা নির্বাচন করুন --</option>'; marketSel.disabled = true;
+  agentSel.innerHTML = '<option value="">-- বাজার নির্বাচন করুন --</option>'; agentSel.disabled = true;
+  if(!district){
+    upSel.innerHTML = '<option value="">-- আগে জেলা নির্বাচন করুন --</option>'; upSel.disabled = true;
+    return;
+  }
+  upSel.disabled = false;
+  upSel.innerHTML = '<option value="">-- উপজেলা/থানা নির্বাচন করুন --</option>' +
+    getUpazilasForDistrict(district).map(u=>`<option value="${u}">${u}</option>`).join("");
+});
+
+document.getElementById("suUpazila").addEventListener("change", async (e)=>{
+  const district = document.getElementById("suDistrict").value;
+  const upazila = e.target.value;
+  const marketSel = document.getElementById("suMarket");
+  const agentSel = document.getElementById("suAgent");
+  agentSel.innerHTML = '<option value="">-- বাজার নির্বাচন করুন --</option>'; agentSel.disabled = true;
+
+  if(!upazila){
+    marketSel.innerHTML = '<option value="">-- আগে উপজেলা নির্বাচন করুন --</option>'; marketSel.disabled = true;
+    return;
+  }
+  marketSel.innerHTML = '<option value="">লোড হচ্ছে...</option>'; marketSel.disabled = true;
+  try{
+    const qs = await db.collection("markets").where("district","==",district).where("upazila","==",upazila).get();
+    if(qs.empty){
+      marketSel.innerHTML = '<option value="">এই উপজেলায় এখনো কোনো বাজার নিবন্ধিত হয়নি</option>';
+      marketSel.disabled = true;
+      return;
+    }
+    marketSel.innerHTML = '<option value="">-- বাজার নির্বাচন করুন --</option>' +
+      qs.docs.map(d=> `<option value="${d.id}">${d.data().name || d.id}</option>`).join("");
+    marketSel.disabled = false;
+  }catch(e){
+    marketSel.innerHTML = '<option value="">লোড করা যায়নি</option>';
+  }
+});
+
+document.getElementById("suMarket").addEventListener("change", async (e)=>{
+  const marketId = e.target.value;
+  const agentSel = document.getElementById("suAgent");
+  if(!marketId){
+    agentSel.innerHTML = '<option value="">-- বাজার নির্বাচন করুন --</option>'; agentSel.disabled = true;
+    return;
+  }
+  agentSel.innerHTML = '<option value="">লোড হচ্ছে...</option>'; agentSel.disabled = true;
+  try{
+    const qs = await db.collection("agents").where("marketId","==",marketId).where("status","==","active").get();
+    if(qs.empty){
+      agentSel.innerHTML = '<option value="">এই বাজারে এখনো কোনো এজেন্ট নেই (ঐচ্ছিক, খালি রাখতে পারেন)</option>';
+      agentSel.disabled = true;
+      return;
+    }
+    agentSel.innerHTML = '<option value="">-- এজেন্ট নির্বাচন করুন --</option>' +
+      qs.docs.map(d=> `<option value="${d.id}">${d.data().name || d.id}</option>`).join("");
+    agentSel.disabled = false;
+  }catch(e){
+    agentSel.innerHTML = '<option value="">লোড করা যায়নি</option>';
+  }
+});
+
+async function afterLoginRoute(uid){
+  const superAdmin = await isSuperAdmin(uid);
+  if (superAdmin) {
+    saveSession({ uid, role: "superadmin" });
+    window.location.href = "admin.html";
+    return;
+  }
+  const userDoc = await getMyUserDoc(uid);
+  if (!userDoc) {
+    showMsg("loginMsg", "এই একাউন্টের কোনো দোকান খুঁজে পাওয়া যায়নি।", false);
+    await auth.signOut();
+    return;
+  }
+  const shop = await getShopDoc(userDoc.shopId);
+  if (!shop || shop.status === "blocked") {
+    showMsg("loginMsg", "আপনার একাউন্টটি ব্লক করা হয়েছে। দোকানের এডমিনের সাথে যোগাযোগ করুন।", false);
+    await auth.signOut();
+    return;
+  }
+  saveSession({
+    uid, role: userDoc.role, shopId: userDoc.shopId,
+    name: userDoc.name || "", email: userDoc.email || "", shopName: shop.shopName || ""
+  });
+  window.location.href = "shop-ledger-app.html";
+}
+
+let __authFlowInProgress = false; // লগইন/সাইনআপ বাটন নিজে থেকে রুট করার সময় নিচের
+                                    // পুরনো-সেশন-ভিত্তিক অটো-রিডাইরেক্ট যেন গায়ে না লাগে
+
+document.getElementById("loginBtn").addEventListener("click", async ()=>{
+  const email = document.getElementById("loginEmail").value.trim();
+  const pass = document.getElementById("loginPass").value;
+  if(!email || !pass){ showMsg("loginMsg","ইমেইল ও পাসওয়ার্ড দিন",false); return; }
+  const btn = document.getElementById("loginBtn");
+  btn.disabled = true; btn.textContent = "লগইন হচ্ছে...";
+  __authFlowInProgress = true;
+  try{
+    const cred = await auth.signInWithEmailAndPassword(email, pass);
+    await clearFailedLogin(email);
+    await afterLoginRoute(cred.user.uid);
+  }catch(e){
+    const count = await recordFailedLogin(email);
+    if (count >= MAX_FAILED_ATTEMPTS) {
+      showMsg("loginMsg", "বারবার ভুল পাসওয়ার্ড দেওয়ার কারণে একাউন্ট ব্লক হয়ে গেছে। এডমিনের সাথে যোগাযোগ করুন।", false);
+    } else {
+      showMsg("loginMsg", `ভুল ইমেইল বা পাসওয়ার্ড (${count}/${MAX_FAILED_ATTEMPTS} বার চেষ্টা)`, false);
+    }
+  }
+  btn.disabled = false; btn.textContent = "লগইন করুন";
+});
+
+document.getElementById("forgotLink").addEventListener("click", async (e)=>{
+  e.preventDefault();
+  let email = document.getElementById("loginEmail").value.trim();
+  if(!email){
+    email = prompt("আপনার ইমেইল লিখুন, পাসওয়ার্ড রিসেট লিংক পাঠানো হবে:");
+  }
+  if(!email) return;
+  try{
+    await auth.sendPasswordResetEmail(email);
+    showMsg("loginMsg", "রিসেট লিংক " + email + " এই ইমেইলে পাঠানো হয়েছে। ইনবক্স (ও স্প্যাম ফোল্ডার) চেক করুন।", true);
+  }catch(e){
+    showMsg("loginMsg", "এই ইমেইলে পাঠানো যায়নি: " + (e.message || "চেষ্টা করুন আবার"), false);
+  }
+});
+
+document.getElementById("signupBtn").addEventListener("click", async ()=>{
+  const shopName = document.getElementById("suShopName").value.trim();
+  const name = document.getElementById("suName").value.trim();
+  const email = document.getElementById("suEmail").value.trim();
+  const pass = document.getElementById("suPass").value;
+  const district = document.getElementById("suDistrict").value;
+  const upazila = document.getElementById("suUpazila").value;
+  const marketId = document.getElementById("suMarket").value;
+  const assignedAgentId = document.getElementById("suAgent").value || null;
+
+  if(!shopName || !name || !email || pass.length < 6){
+    showMsg("signupMsg","সব ঘর সঠিকভাবে পূরণ করুন (পাসওয়ার্ড কমপক্ষে ৬ অক্ষর)",false); return;
+  }
+  if(!district || !upazila || !marketId){
+    showMsg("signupMsg","জেলা, উপজেলা ও বাজার — তিনটাই নির্বাচন করুন।",false); return;
+  }
+  const btn = document.getElementById("signupBtn");
+  btn.disabled = true; btn.textContent = "তৈরি হচ্ছে...";
+  __authFlowInProgress = true;
+  try{
+    const cred = await auth.createUserWithEmailAndPassword(email, pass);
+    const uid = cred.user.uid;
+    await db.collection("shops").doc(uid).set({
+      shopId: uid, ownerUid: uid, shopName, ownerName: name, ownerEmail: email,
+      status: "active",
+      district, upazila, marketId, assignedAgentId,
+      features: { reports:true, extraIncome:true, ops:true, monitor:true, whatsapp:true },
+      createdAt: fbNow(), updatedAt: fbNow()
+    });
+    await db.collection("users").doc(uid).set({
+      uid, shopId: uid, role: "admin", name, email, createdAt: fbNow()
+    });
+    await db.collection("shops").doc(uid).collection("members").doc(uid).set({
+      uid, name, role: "admin", email, createdAt: fbNow()
+    });
+    showMsg("signupMsg","দোকান তৈরি হয়ে গেছে! লগইন করা হচ্ছে...", true);
+    await afterLoginRoute(uid);
+  }catch(e){
+    showMsg("signupMsg", e.message || "নিবন্ধন ব্যর্থ হয়েছে", false);
+  }
+  btn.disabled = false; btn.textContent = "দোকান তৈরি করুন";
+});
+
+// আগে থেকে লগইন থাকলে সরাসরি অ্যাপে পাঠিয়ে দাও
+// (এই লিসেনারটা লগইন বাটন ক্লিক করলেও ট্রিগার হয় — তাই দুটো গার্ড দরকার:
+//  ১) লগইন/সাইনআপ বাটন নিজে থেকে রুট করছে এমন সময় এটা কিছু করবে না, এবং
+//  ২) localStorage-এর session সত্যিই এই মুহূর্তের auth user-এরই কিনা, সেটা মিলিয়ে দেখা —
+//  নাহলে ডিভাইসে থেকে যাওয়া কোনো পুরনো/অন্য ইউজারের session দিয়ে ভুল শপে ঢুকিয়ে দিতে পারত)
+auth.onAuthStateChanged(async (user)=>{
+  if (__authFlowInProgress) return;
+  const session = getSession();
+  if (user && session && session.uid === user.uid) {
+    if (session.role === "superadmin") window.location.href = "admin.html";
+    else window.location.href = "shop-ledger-app.html";
+  }
+});
+</script>
+</body>
+</html>
