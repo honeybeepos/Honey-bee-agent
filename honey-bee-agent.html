@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🐝 Honey Bee Agent</title>
+<meta name="theme-color" content="#1a1206">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --bg1:#1a1206; --bg2:#3d2405; --gold:#ffb703; --amber:#ffd166;
+    --card:#241705; --border:rgba(255,209,102,0.22); --danger:#e2543d; --ok:#2fbf71; --muted:rgba(255,248,232,0.55);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{ height:100%; margin:0; }
+  body{
+    min-height:100vh;
+    background:
+      radial-gradient(circle at 15% 0%, rgba(255,183,3,0.16), transparent 45%),
+      radial-gradient(circle at 90% 100%, rgba(255,209,102,0.10), transparent 40%),
+      linear-gradient(160deg, var(--bg1) 0%, var(--bg2) 100%);
+    color:#fff8e8; font-family:'Noto Sans Bengali','Space Mono',sans-serif;
+  }
+  .wrap{ max-width:720px; margin:0 auto; padding:20px 16px 50px; }
+
+  header{ display:flex; align-items:center; gap:12px; margin-bottom:18px; }
+  header .hex{ font-size:34px; }
+  header h1{ margin:0; font-size:17px; font-weight:800; }
+  header p{ margin:2px 0 0; font-size:10.5px; color:var(--amber); letter-spacing:1.3px; text-transform:uppercase; opacity:0.85; }
+  #logoutBtn{ margin-left:auto; background:transparent; border:1px solid var(--border); color:var(--muted); padding:8px 12px; border-radius:9px; font-size:11.5px; cursor:pointer; font-family:inherit; }
+
+  .card{
+    background:var(--card); border:1px solid var(--border); border-radius:16px; padding:18px;
+    margin-bottom:14px; box-shadow:0 10px 24px rgba(0,0,0,0.3);
+  }
+  .card h2{ margin:0 0 12px; font-size:14.5px; color:var(--amber); display:flex; align-items:center; gap:8px; }
+  label{ display:block; font-size:12px; color:var(--muted); margin-bottom:6px; font-weight:600; }
+  input,select{
+    width:100%; padding:11px 12px; border-radius:10px; border:1px solid var(--border);
+    background:rgba(255,255,255,0.06); color:#fff8e8; font-family:inherit; font-size:14px; margin-bottom:12px;
+  }
+  input:focus,select:focus{ outline:2px solid var(--gold); outline-offset:1px; }
+  .btn{
+    width:100%; padding:12px; border:none; border-radius:10px; font-size:14.5px; font-weight:800;
+    cursor:pointer; font-family:inherit; background:linear-gradient(135deg, var(--amber), var(--gold)); color:var(--bg1);
+  }
+  .btn.secondary{ background:transparent; color:var(--amber); border:1px solid var(--border); }
+  .btn.small{ width:auto; padding:8px 14px; font-size:12.5px; }
+  .btn.danger{ background:var(--danger); color:#fff; }
+  .btn.ok{ background:var(--ok); color:#fff; }
+
+  .statGrid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+  .statBox{ background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px; text-align:center; }
+  .statBox .num{ font-size:22px; font-weight:800; color:var(--amber); }
+  .statBox .lbl{ font-size:11px; color:var(--muted); margin-top:2px; }
+
+  .tabs{ display:flex; gap:6px; margin-bottom:16px; overflow-x:auto; padding-bottom:4px; }
+  .tabBtn{
+    flex-shrink:0; padding:9px 14px; border-radius:20px; border:1px solid var(--border);
+    background:transparent; color:var(--muted); font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit;
+  }
+  .tabBtn.active{ background:linear-gradient(135deg, var(--amber), var(--gold)); color:var(--bg1); border-color:transparent; }
+  .tabPanel{ display:none; }
+  .tabPanel.active{ display:block; }
+
+  .rowItem{
+    display:flex; align-items:center; gap:10px; padding:12px; border:1px solid var(--border);
+    border-radius:12px; margin-bottom:10px; background:rgba(255,255,255,0.02);
+  }
+  .rowItem .info{ flex:1; min-width:0; }
+  .rowItem .name{ font-weight:700; font-size:14px; }
+  .rowItem .meta{ font-size:11px; color:var(--muted); margin-top:2px; }
+  .badge{ font-size:10.5px; padding:3px 9px; border-radius:20px; font-weight:700; flex-shrink:0; }
+  .badge.active{ background:rgba(47,191,113,0.18); color:var(--ok); }
+  .badge.blocked{ background:rgba(226,84,61,0.18); color:var(--danger); }
+  .badge.pending{ background:rgba(255,209,102,0.18); color:var(--amber); }
+  .rowActions{ display:flex; gap:6px; flex-wrap:wrap; }
+
+  .emptyMsg{ text-align:center; color:var(--muted); font-size:12.5px; padding:26px 10px; }
+
+  #loginScreen{ max-width:400px; margin:60px auto 0; }
+  #loginScreen .hex{ text-align:center; font-size:46px; margin-bottom:10px; }
+  #loginScreen h1{ text-align:center; font-size:19px; margin:0 0 4px; }
+  #loginScreen p.sub{ text-align:center; font-size:11.5px; color:var(--amber); letter-spacing:1.3px; text-transform:uppercase; margin:0 0 22px; }
+  #loginError{ display:none; color:var(--danger); font-size:12.5px; margin:-4px 0 12px; }
+  #blockedScreen{ display:none; max-width:420px; margin:80px auto 0; text-align:center; }
+  #blockedScreen .hex{ font-size:50px; }
+
+  .modalOverlay{
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:50;
+    align-items:flex-end; justify-content:center;
+  }
+  .modalCard{
+    background:var(--bg2); border:1px solid var(--border); border-radius:20px 20px 0 0;
+    padding:22px 18px 28px; width:100%; max-width:480px; max-height:85vh; overflow-y:auto;
+  }
+  .modalCard h3{ margin:0 0 14px; font-size:15px; color:var(--amber); }
+  .modalClose{ text-align:center; margin-top:10px; }
+  .modalClose span{ font-size:12px; color:var(--muted); cursor:pointer; text-decoration:underline; }
+</style>
+</head>
+<body>
+
+<!-- ================= লগইন স্ক্রিন ================= -->
+<div class="wrap" id="loginScreen">
+  <div class="hex">🐝</div>
+  <h1>Honey Bee Agent</h1>
+  <p class="sub">Market Agent Panel</p>
+  <div class="card">
+    <label for="loginEmail">ইমেইল</label>
+    <input type="email" id="loginEmail" placeholder="agent@example.com">
+    <label for="loginPass">পাসওয়ার্ড</label>
+    <input type="password" id="loginPass" placeholder="••••••••">
+    <p id="loginError"></p>
+    <button class="btn" id="loginBtn">🔑 লগইন করুন</button>
+  </div>
+</div>
+
+<!-- ================= ব্লকড স্ক্রিন ================= -->
+<div class="wrap" id="blockedScreen">
+  <div class="hex">🚫</div>
+  <h2 style="margin:10px 0 6px;">অ্যাকাউন্ট নিষ্ক্রিয়</h2>
+  <p style="color:var(--muted); font-size:13px;">আপনার এজেন্ট অ্যাকাউন্টটি বর্তমানে ব্লক করা আছে। সুপার অ্যাডমিনের সাথে যোগাযোগ করুন।</p>
+  <button class="btn secondary" id="blockedLogoutBtn" style="margin-top:16px;">লগআউট</button>
+</div>
+
+<!-- ================= মূল ড্যাশবোর্ড ================= -->
+<div class="wrap" id="mainScreen" style="display:none;">
+  <header>
+    <div class="hex">🐝</div>
+    <div>
+      <h1 id="marketNameLbl">Honey Bee Agent</h1>
+      <p>MARKET AGENT PANEL</p>
+    </div>
+    <button id="logoutBtn">লগআউট</button>
+  </header>
+
+  <div class="statGrid">
+    <div class="statBox"><div class="num" id="statRiders">—</div><div class="lbl">সক্রিয় রাইডার</div></div>
+    <div class="statBox"><div class="num" id="statShops">—</div><div class="lbl">সক্রিয় দোকান</div></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tabBtn active" data-tab="tabOverview">📊 ওভারভিউ</button>
+    <button class="tabBtn" data-tab="tabRiders">🛵 রাইডার</button>
+    <button class="tabBtn" data-tab="tabShops">🏪 দোকান</button>
+    <button class="tabBtn" data-tab="tabCharge">💰 ডেলিভারি চার্জ</button>
+  </div>
+
+  <!-- ওভারভিউ -->
+  <div class="tabPanel active" id="tabOverview">
+    <div class="card">
+      <h2>ℹ️ এজেন্ট তথ্য</h2>
+      <p style="font-size:12.5px; color:var(--muted); margin:0 0 6px;">বাজার: <b id="ovMarket" style="color:var(--amber);">—</b></p>
+      <p style="font-size:12.5px; color:var(--muted); margin:0 0 6px;">স্ট্যাটাস: <span class="badge active">সক্রিয়</span></p>
+      <p style="font-size:12.5px; color:var(--muted); margin:0;">কমিশন হার: <b id="ovCommission" style="color:var(--amber);">২০%</b></p>
+    </div>
+  </div>
+
+  <!-- রাইডার ম্যানেজমেন্ট -->
+  <div class="tabPanel" id="tabRiders">
+    <button class="btn" id="addRiderBtn" style="margin-bottom:14px;">➕ নতুন রাইডার যোগ করুন</button>
+    <div id="ridersList"><div class="emptyMsg">লোড হচ্ছে...</div></div>
+  </div>
+
+  <!-- শপ ম্যানেজমেন্ট -->
+  <div class="tabPanel" id="tabShops">
+    <p style="font-size:11.5px; color:var(--muted); margin:0 0 12px;">এই তালিকায় শুধু সেসব দোকান দেখাবে যেগুলো রেজিস্ট্রেশনের সময় আপনাকে (এজেন্ট) নির্বাচন করেছে।</p>
+    <div id="shopsList"><div class="emptyMsg">লোড হচ্ছে...</div></div>
+  </div>
+
+  <!-- ডেলিভারি চার্জ -->
+  <div class="tabPanel" id="tabCharge">
+    <div class="card">
+      <h2>💰 ডাইনামিক ডেলিভারি চার্জ</h2>
+      <label for="baseChargeInput">বেস চার্জ (SAR)</label>
+      <input type="number" id="baseChargeInput" placeholder="যেমনঃ 5" min="0" step="0.5">
+      <label for="perKmInput">প্রতি কিমি অতিরিক্ত চার্জ (SAR)</label>
+      <input type="number" id="perKmInput" placeholder="যেমনঃ 1.5" min="0" step="0.5">
+      <button class="btn" id="saveChargeBtn">✅ সেভ করুন</button>
+      <p id="chargeSavedMsg" style="display:none; color:var(--ok); font-size:12px; margin:10px 0 0;">✅ সেভ হয়েছে!</p>
+    </div>
+  </div>
+</div>
+
+<!-- ================= নতুন রাইডার মোডাল ================= -->
+<div class="modalOverlay" id="riderModal">
+  <div class="modalCard">
+    <h3>➕ নতুন রাইডার যোগ করুন</h3>
+    <label for="riderName">রাইডারের নাম</label>
+    <input type="text" id="riderName" placeholder="পূর্ণ নাম">
+    <label for="riderPhone">মোবাইল নম্বর (লগইনের জন্য ব্যবহার হবে)</label>
+    <input type="text" id="riderPhone" placeholder="05XXXXXXXX">
+    <label for="riderPassword">পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)</label>
+    <input type="text" id="riderPassword" placeholder="রাইডারকে এই পাসওয়ার্ড জানিয়ে দিন">
+    <label for="riderNid">NID/ইকামা নম্বর</label>
+    <input type="text" id="riderNid" placeholder="আইডি নম্বর">
+    <label for="riderZone">কাজের জোন/এলাকা</label>
+    <input type="text" id="riderZone" placeholder="যেমনঃ আল-মদিনা এলাকা">
+    <label for="riderVehicle">যানবাহনের ধরন</label>
+    <select id="riderVehicle">
+      <option value="bike">🏍️ বাইক</option>
+      <option value="bicycle">🚲 সাইকেল</option>
+      <option value="car">🚗 কার</option>
+    </select>
+    <label for="riderGuarantor">জামিনদারের নাম ও নম্বর</label>
+    <input type="text" id="riderGuarantor" placeholder="নাম — মোবাইল নম্বর">
+    <label for="riderCashLimit">ক্যাশ হোল্ড লিমিট (SAR)</label>
+    <input type="number" id="riderCashLimit" value="500" min="0" step="50">
+    <button class="btn" id="saveRiderBtn">✅ রাইডার যোগ করুন</button>
+    <p id="riderAddMsg" style="display:none; font-size:12.5px; margin:8px 0 0;"></p>
+    <div class="modalClose"><span id="closeRiderModal">✕ বন্ধ করুন</span></div>
+  </div>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyD6qmuWkNUrskMIBHq8Z_AQ0N_WT1DL8Is",
+  authDomain: "honeybee-984dd.firebaseapp.com",
+  projectId: "honeybee-984dd",
+  storageBucket: "honeybee-984dd.firebasestorage.app",
+  messagingSenderId: "610211112501",
+  appId: "1:610211112501:web:9ea40b9060d425e85b737c"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+// রাইডারের নতুন লগইন অ্যাকাউন্ট তৈরির সময় এজেন্টের নিজের সেশন যেন নষ্ট না
+// হয়, তাই একটা আলাদা সেকেন্ডারি Firebase app ব্যবহার করা হচ্ছে
+const secondaryApp = firebase.initializeApp(firebaseConfig, "Secondary");
+const secondaryAuth = secondaryApp.auth();
+
+// ফোন নম্বর দিয়ে লগইন করানোর জন্য Firebase Auth-এ একটা "সিন্থেটিক" ইমেইল
+// বানানো হয় (SMS/OTP সেটআপ এড়াতে — কার্ড-ফ্রি রাখতে) — এই ইমেইলটা কখনো
+// প্রকৃত মেইল পাঠাতে ব্যবহার হয় না, শুধু Auth আইডেন্টিফায়ার হিসেবে কাজ করে
+function phoneToAuthEmail(phone){
+  const digits = phone.replace(/[^0-9]/g, "");
+  return `rider_${digits}@honeybee-riders.app`;
+}
+
+function $(id){ return document.getElementById(id); }
+let currentAgent = null; // { uid, marketId, deliveryChargeConfig, status }
+let ridersUnsub = null, shopsUnsub = null;
+
+/* ---------- লগইন / সেশন ---------- */
+$("loginBtn").addEventListener("click", async ()=>{
+  const email = $("loginEmail").value.trim();
+  const pass = $("loginPass").value;
+  $("loginError").style.display = "none";
+  if(!email || !pass){ showLoginError("ইমেইল ও পাসওয়ার্ড দিন।"); return; }
+  $("loginBtn").disabled = true; $("loginBtn").textContent = "লগইন হচ্ছে...";
+  try{
+    await auth.signInWithEmailAndPassword(email, pass);
+  }catch(e){
+    showLoginError("লগইন ব্যর্থ — ইমেইল/পাসওয়ার্ড ভুল অথবা অ্যাকাউন্ট নেই।");
+  }finally{
+    $("loginBtn").disabled = false; $("loginBtn").textContent = "🔑 লগইন করুন";
+  }
+});
+function showLoginError(msg){ $("loginError").textContent = msg; $("loginError").style.display = "block"; }
+
+$("logoutBtn").addEventListener("click", ()=> auth.signOut());
+$("blockedLogoutBtn").addEventListener("click", ()=> auth.signOut());
+
+auth.onAuthStateChanged(async (user)=>{
+  stopListeners();
+  if(!user){
+    $("loginScreen").style.display = "block";
+    $("mainScreen").style.display = "none";
+    $("blockedScreen").style.display = "none";
+    return;
+  }
+  try{
+    const userDoc = await db.collection("users").doc(user.uid).get();
+    if(!userDoc.exists || userDoc.data().role !== "agent"){
+      showLoginError("এই অ্যাকাউন্টটি এজেন্ট হিসেবে নিবন্ধিত না।");
+      await auth.signOut();
+      return;
+    }
+    const agentDoc = await db.collection("agents").doc(user.uid).get();
+    if(!agentDoc.exists){
+      showLoginError("এজেন্ট প্রোফাইল পাওয়া যায়নি।");
+      await auth.signOut();
+      return;
+    }
+    currentAgent = { uid: user.uid, ...agentDoc.data() };
+
+    if(currentAgent.status !== "active"){
+      $("loginScreen").style.display = "none";
+      $("mainScreen").style.display = "none";
+      $("blockedScreen").style.display = "block";
+      return;
+    }
+
+    $("loginScreen").style.display = "none";
+    $("blockedScreen").style.display = "none";
+    $("mainScreen").style.display = "block";
+    await loadDashboard();
+  }catch(e){
+    console.error(e);
+    showLoginError("কিছু একটা সমস্যা হয়েছে, আবার চেষ্টা করুন।");
+    await auth.signOut();
+  }
+});
+
+/* ---------- ট্যাব সুইচিং ---------- */
+document.querySelectorAll(".tabBtn").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll(".tabBtn").forEach(b=> b.classList.remove("active"));
+    document.querySelectorAll(".tabPanel").forEach(p=> p.classList.remove("active"));
+    btn.classList.add("active");
+    $(btn.dataset.tab).classList.add("active");
+  });
+});
+
+/* ---------- ড্যাশবোর্ড লোড ---------- */
+async function loadDashboard(){
+  // মার্কেটের নাম
+  try{
+    const marketDoc = await db.collection("markets").doc(currentAgent.marketId).get();
+    const marketName = marketDoc.exists ? (marketDoc.data().name || currentAgent.marketId) : currentAgent.marketId;
+    $("marketNameLbl").textContent = "🐝 " + marketName;
+    $("ovMarket").textContent = marketName;
+  }catch(e){ $("marketNameLbl").textContent = "🐝 Honey Bee Agent"; }
+
+  if(currentAgent.commissionPercent){
+    $("ovCommission").textContent = currentAgent.commissionPercent + "%";
+  }
+
+  // ডেলিভারি চার্জ ফর্মে বিদ্যমান মান বসানো
+  const cfg = currentAgent.deliveryChargeConfig || {};
+  $("baseChargeInput").value = cfg.baseCharge != null ? cfg.baseCharge : "";
+  $("perKmInput").value = cfg.perKmRate != null ? cfg.perKmRate : "";
+
+  listenRiders();
+  listenShops();
+}
+
+function stopListeners(){
+  if(ridersUnsub){ ridersUnsub(); ridersUnsub = null; }
+  if(shopsUnsub){ shopsUnsub(); shopsUnsub = null; }
+}
+
+/* ---------- রাইডার লিস্ট (রিয়েলটাইম) ---------- */
+function listenRiders(){
+  ridersUnsub = db.collection("riders").where("assignedAgentId", "==", currentAgent.uid)
+    .onSnapshot((qs)=>{
+      const activeCount = qs.docs.filter(d=> d.data().status === "active").length;
+      $("statRiders").textContent = activeCount;
+
+      if(qs.empty){
+        $("ridersList").innerHTML = '<div class="emptyMsg">এখনো কোনো রাইডার যোগ করা হয়নি।</div>';
+        return;
+      }
+      $("ridersList").innerHTML = qs.docs.map(doc=>{
+        const r = doc.data();
+        const statusClass = r.status === "active" ? "active" : (r.status === "pending" ? "pending" : "blocked");
+        const statusText = r.status === "active" ? "সক্রিয়" : (r.status === "pending" ? "পেন্ডিং" : "ব্লকড");
+        const toggleLabel = r.status === "active" ? "🚫 ব্লক করুন" : "✅ আনব্লক করুন";
+        const toggleClass = r.status === "active" ? "danger" : "ok";
+        return `
+          <div class="rowItem">
+            <div class="info">
+              <div class="name">${escapeHtml(r.name || "নাম নেই")}</div>
+              <div class="meta">📱 ${escapeHtml(r.phone || "—")} · ক্যাশ লিমিট: SAR ${r.cashHoldLimit != null ? r.cashHoldLimit : "—"}</div>
+            </div>
+            <span class="badge ${statusClass}">${statusText}</span>
+          </div>
+          <div class="rowActions" style="margin:-6px 0 10px;">
+            <button class="btn small ${toggleClass}" onclick="toggleRiderStatus('${doc.id}','${r.status}')">${toggleLabel}</button>
+            <button class="btn small secondary" onclick="resetRiderCash('${doc.id}')">🔄 ক্যাশ রিসেট</button>
+          </div>`;
+      }).join("");
+    }, (err)=>{
+      console.error("riders listener error:", err);
+      $("ridersList").innerHTML = '<div class="emptyMsg">রাইডার লোড করা যায়নি।</div>';
+    });
+}
+
+window.toggleRiderStatus = async function(riderId, currentStatus){
+  const newStatus = currentStatus === "active" ? "blocked" : "active";
+  try{
+    await db.collection("riders").doc(riderId).update({ status: newStatus });
+  }catch(e){ alert("স্ট্যাটাস বদলানো যায়নি: " + e.message); }
+};
+
+window.resetRiderCash = async function(riderId){
+  if(!confirm("এই রাইডারের জমাকৃত ক্যাশ রিসেট করবেন?")) return;
+  try{
+    await db.collection("riders").doc(riderId).update({ currentCashHeld: 0 });
+    alert("ক্যাশ লিমিট রিসেট হয়েছে।");
+  }catch(e){ alert("রিসেট করা যায়নি: " + e.message); }
+};
+
+/* ---------- নতুন রাইডার মোডাল ---------- */
+$("addRiderBtn").addEventListener("click", ()=> $("riderModal").style.display = "flex");
+$("closeRiderModal").addEventListener("click", ()=> $("riderModal").style.display = "none");
+$("saveRiderBtn").addEventListener("click", async ()=>{
+  const name = $("riderName").value.trim();
+  const phone = $("riderPhone").value.trim();
+  const password = $("riderPassword").value;
+  const nid = $("riderNid").value.trim();
+  const zone = $("riderZone").value.trim();
+  const vehicle = $("riderVehicle").value;
+  const guarantor = $("riderGuarantor").value.trim();
+  const cashLimit = Number($("riderCashLimit").value) || 500;
+  const msgEl = $("riderAddMsg");
+  msgEl.style.display = "none";
+
+  if(!name || !phone || !password){
+    msgEl.textContent = "⚠️ নাম, মোবাইল নম্বর ও পাসওয়ার্ড আবশ্যক।";
+    msgEl.style.color = "#e2543d"; msgEl.style.display = "block";
+    return;
+  }
+  if(password.length < 6){
+    msgEl.textContent = "⚠️ পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।";
+    msgEl.style.color = "#e2543d"; msgEl.style.display = "block";
+    return;
+  }
+
+  $("saveRiderBtn").disabled = true; $("saveRiderBtn").textContent = "যোগ হচ্ছে...";
+  try{
+    // Honey Bee Delivery App-এ লগইন করার জন্য একটা আসল Firebase Auth
+    // অ্যাকাউন্ট তৈরি হচ্ছে (ফোন নম্বর দিয়ে, সিন্থেটিক ইমেইলের মাধ্যমে)
+    const authEmail = phoneToAuthEmail(phone);
+    const cred = await secondaryAuth.createUserWithEmailAndPassword(authEmail, password);
+    const newUid = cred.user.uid;
+    await secondaryAuth.signOut();
+
+    await db.collection("users").doc(newUid).set({
+      role: "rider", phone, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    await db.collection("riders").doc(newUid).set({
+      name, phone,
+      nidNumber: nid,
+      zone, vehicleType: vehicle,
+      guarantorDetails: guarantor,
+      assignedAgentId: currentAgent.uid,
+      marketId: currentAgent.marketId,
+      cashHoldLimit: cashLimit,
+      currentCashHeld: 0,
+      status: "active",
+      online: false,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    $("riderModal").style.display = "none";
+    $("riderName").value = ""; $("riderPhone").value = ""; $("riderPassword").value = "";
+    $("riderNid").value = ""; $("riderZone").value = ""; $("riderGuarantor").value = "";
+    $("riderCashLimit").value = "500";
+    msgEl.textContent = "";
+  }catch(e){
+    console.error(e);
+    let friendly = e.message;
+    if(e.code === "auth/email-already-in-use") friendly = "এই মোবাইল নম্বর দিয়ে আগে থেকেই একজন রাইডার নিবন্ধিত আছে।";
+    msgEl.textContent = "⚠️ রাইডার যোগ করা যায়নি: " + friendly;
+    msgEl.style.color = "#e2543d"; msgEl.style.display = "block";
+  }finally{
+    $("saveRiderBtn").disabled = false; $("saveRiderBtn").textContent = "✅ রাইডার যোগ করুন";
+  }
+});
+
+/* ---------- শপ লিস্ট (রিয়েলটাইম) ---------- */
+function listenShops(){
+  shopsUnsub = db.collection("shops").where("assignedAgentId", "==", currentAgent.uid)
+    .onSnapshot((qs)=>{
+      const activeCount = qs.docs.filter(d=> d.data().status === "active").length;
+      $("statShops").textContent = activeCount;
+
+      if(qs.empty){
+        $("shopsList").innerHTML = '<div class="emptyMsg">এখনো কোনো দোকান আপনাকে (এজেন্ট) হিসেবে বেছে নেয়নি।</div>';
+        return;
+      }
+      $("shopsList").innerHTML = qs.docs.map(doc=>{
+        const s = doc.data();
+        const statusClass = s.status === "active" ? "active" : "blocked";
+        const statusText = s.status === "active" ? "সক্রিয়" : "ব্লকড/সাসপেন্ড";
+        const toggleLabel = s.status === "active" ? "🚫 ব্লক করুন" : "✅ আনব্লক করুন";
+        const toggleClass = s.status === "active" ? "danger" : "ok";
+        return `
+          <div class="rowItem">
+            <div class="info">
+              <div class="name">${escapeHtml(s.name || s.shopName || "দোকান")}</div>
+              <div class="meta">🏪 ${escapeHtml(doc.id)}</div>
+            </div>
+            <span class="badge ${statusClass}">${statusText}</span>
+          </div>
+          <div class="rowActions" style="margin:-6px 0 10px;">
+            <button class="btn small ${toggleClass}" onclick="toggleShopStatus('${doc.id}','${s.status}')">${toggleLabel}</button>
+          </div>`;
+      }).join("");
+    }, (err)=>{
+      console.error("shops listener error:", err);
+      $("shopsList").innerHTML = '<div class="emptyMsg">দোকানের তালিকা লোড করা যায়নি।</div>';
+    });
+}
+
+window.toggleShopStatus = async function(shopId, currentStatus){
+  const newStatus = currentStatus === "active" ? "blocked" : "active";
+  const reason = newStatus === "blocked" ? prompt("ব্লক করার কারণ লিখুন (ঐচ্ছিক):") : null;
+  try{
+    const updateData = { status: newStatus };
+    if(reason) updateData.blockReason = reason;
+    await db.collection("shops").doc(shopId).update(updateData);
+  }catch(e){ alert("স্ট্যাটাস বদলানো যায়নি: " + e.message); }
+};
+
+/* ---------- ডেলিভারি চার্জ সেভ ---------- */
+$("saveChargeBtn").addEventListener("click", async ()=>{
+  const baseCharge = Number($("baseChargeInput").value);
+  const perKmRate = Number($("perKmInput").value);
+  if(isNaN(baseCharge) || isNaN(perKmRate)){ alert("সঠিক সংখ্যা দিন।"); return; }
+  $("saveChargeBtn").disabled = true;
+  try{
+    await db.collection("agents").doc(currentAgent.uid).update({
+      deliveryChargeConfig: { baseCharge, perKmRate, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }
+    });
+    $("chargeSavedMsg").style.display = "block";
+    setTimeout(()=> $("chargeSavedMsg").style.display = "none", 2500);
+  }catch(e){
+    alert("সেভ করা যায়নি: " + e.message);
+  }finally{
+    $("saveChargeBtn").disabled = false;
+  }
+});
+
+function escapeHtml(str){
+  const d = document.createElement("div");
+  d.textContent = str == null ? "" : String(str);
+  return d.innerHTML;
+}
+</script>
+</body>
+</html>
