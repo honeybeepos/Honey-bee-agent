@@ -42,7 +42,7 @@
     width:100%; padding:11px 12px; border-radius:10px; border:1px solid var(--border);
     background:rgba(255,255,255,0.06); color:#fff8e8; font-family:inherit; font-size:14px; margin-bottom:12px;
   }
-  input:focus,select:focus{ outline:2px solid var(--gold); outline-offset:1px; }
+  input:focus,select:focus{ outline: solid var(--gold); outline-offset:1px; }
   .btn{
     width:100%; padding:12px; border:none; border-radius:10px; font-size:14.5px; font-weight:800;
     cursor:pointer; font-family:inherit; background:linear-gradient(135deg, var(--amber), var(--gold)); color:var(--bg1);
@@ -216,6 +216,30 @@
   </div>
 </div>
 
+<!-- ================= 🛡️ ভেরিফিকেশন মোডাল ================= -->
+<div class="modalOverlay" id="verifyModal">
+  <div class="modalCard">
+    <h3>🛡️ ভেরিফিকেশন — <span id="verifyTargetName">—</span></h3>
+    <p style="font-size:12.5px; color:rgba(255,248,232,0.6); margin:0 0 14px;">সরেজমিনে পরিদর্শন করে NID যাচাই করুন এবং ছবি তুলুন। সব ঠিক থাকলে "Approve" চাপুন — এরপর এই অ্যাকাউন্টের পাশে 🛡️ ব্যাজ দেখাবে এবং Bazar/পাবলিক তালিকায় প্রকাশিত হবে।</p>
+
+    <label>🪪 NID সামনের দিক (ছবি তুলুন)</label>
+    <input type="file" accept="image/*" capture="environment" id="verifyNidFront">
+    <div id="verifyNidFrontPreview" style="margin:6px 0 12px;"></div>
+
+    <label>🪪 NID পেছনের দিক (ছবি তুলুন)</label>
+    <input type="file" accept="image/*" capture="environment" id="verifyNidBack">
+    <div id="verifyNidBackPreview" style="margin:6px 0 12px;"></div>
+
+    <label>🤳 লাইভ ছবি (ব্যক্তিকে সামনাসামনি দেখে তুলুন)</label>
+    <input type="file" accept="image/*" capture="user" id="verifyLivePhoto">
+    <div id="verifyLivePhotoPreview" style="margin:6px 0 12px;"></div>
+
+    <button class="btn" id="approveVerifyBtn" style="background:linear-gradient(135deg,#4ade80,#16a34a);">✅ Approve Account</button>
+    <p id="verifyMsg" style="display:none; font-size:12.5px; margin:8px 0 0;"></p>
+    <div class="modalClose"><span id="closeVerifyModal">✕ বন্ধ করুন</span></div>
+  </div>
+</div>
+
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyD6qmuWkNUrskMIBHq8Z_AQ0N_WT1DL8Is",
@@ -364,7 +388,7 @@ function listenRiders(){
         return `
           <div class="rowItem">
             <div class="info">
-              <div class="name">${escapeHtml(r.name || "নাম নেই")}</div>
+              <div class="name">${escapeHtml(r.name || "নাম নেই")} ${r.isVerified ? '<span title="Verified">🛡️</span>' : ''}</div>
               <div class="meta">📱 ${escapeHtml(r.phone || "—")} · ক্যাশ লিমিট: SAR ${r.cashHoldLimit != null ? r.cashHoldLimit : "—"}</div>
             </div>
             <span class="badge ${statusClass}">${statusText}</span>
@@ -372,6 +396,7 @@ function listenRiders(){
           <div class="rowActions" style="margin:-6px 0 10px;">
             <button class="btn small ${toggleClass}" onclick="toggleRiderStatus('${doc.id}','${r.status}')">${toggleLabel}</button>
             <button class="btn small secondary" onclick="resetRiderCash('${doc.id}')">🔄 ক্যাশ রিসেট</button>
+            ${r.isVerified ? '<span class="badge active">🛡️ Verified</span>' : `<button class="btn small ok" onclick="openVerifyModal('rider','${doc.id}','${escapeHtml(r.name || 'রাইডার').replace(/'/g,"")}')">🛡️ ভেরিফাই করুন</button>`}
           </div>`;
       }).join("");
     }, (err)=>{
@@ -484,13 +509,14 @@ function listenShops(){
         return `
           <div class="rowItem">
             <div class="info">
-              <div class="name">${escapeHtml(s.name || s.shopName || "দোকান")}</div>
+              <div class="name">${escapeHtml(s.name || s.shopName || "দোকান")} ${s.isVerified ? '<span title="Verified">🛡️</span>' : ''}</div>
               <div class="meta">🏪 ${escapeHtml(doc.id)}</div>
             </div>
             <span class="badge ${statusClass}">${statusText}</span>
           </div>
           <div class="rowActions" style="margin:-6px 0 10px;">
             <button class="btn small ${toggleClass}" onclick="toggleShopStatus('${doc.id}','${s.status}')">${toggleLabel}</button>
+            ${s.isVerified ? '<span class="badge active">🛡️ Verified</span>' : `<button class="btn small ok" onclick="openVerifyModal('shop','${doc.id}','${escapeHtml(s.name || s.shopName || 'দোকান').replace(/'/g,"")}')">🛡️ ভেরিফাই করুন</button>`}
           </div>`;
       }).join("");
     }, (err)=>{
@@ -533,6 +559,94 @@ function escapeHtml(str){
   d.textContent = str == null ? "" : String(str);
   return d.innerHTML;
 }
+
+/* ==================== 🛡️ এজেন্ট ভেরিফিকেশন সিস্টেম ====================
+   কোনো দোকান/রাইডার এজেন্ট কর্তৃক ভেরিফাই না হওয়া পর্যন্ত পাবলিকভাবে
+   (Bazar অ্যাপে) দেখা যাবে না। ভেরিফাই করতে NID সামনে/পেছনে + লাইভ ছবি —
+   তিনটাই তুলতে হবে, ছবিগুলো ছোট করে (compress) Firestore-এ base64
+   হিসেবে সেভ হয় (কোনো Firebase Storage খরচ ছাড়াই)। */
+
+// ক্যামেরার আসল ছবি সাধারণত ২-৫ MB হয়ে যায় — Firestore ডকুমেন্টের ১MB
+// সীমার মধ্যে রাখতে ছবিটা ছোট (max ৯০০px চওড়া) করে JPEG-এ কমপ্রেস করা হয়
+function compressImageToDataUrl(file, maxWidth, quality){
+  maxWidth = maxWidth || 900; quality = quality || 0.7;
+  return new Promise((resolve, reject)=>{
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = ()=>{ img.src = reader.result; };
+    reader.onerror = reject;
+    img.onload = ()=>{
+      const scale = Math.min(1, maxWidth / img.width);
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+let verifyPendingImages = { nidFront: null, nidBack: null, livePhoto: null };
+let verifyTarget = null; // { type: 'shop'|'rider', id, name }
+
+function setupVerifyImageInput(inputId, previewId, key){
+  $(inputId).addEventListener("change", async (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    try{
+      const dataUrl = await compressImageToDataUrl(file);
+      verifyPendingImages[key] = dataUrl;
+      $(previewId).innerHTML = `<img src="${dataUrl}" style="width:80px; height:80px; object-fit:cover; border-radius:8px; border:1px solid rgba(255,209,102,0.3);">`;
+    }catch(err){ alert("ছবি প্রসেস করা যায়নি।"); }
+  });
+}
+setupVerifyImageInput("verifyNidFront", "verifyNidFrontPreview", "nidFront");
+setupVerifyImageInput("verifyNidBack", "verifyNidBackPreview", "nidBack");
+setupVerifyImageInput("verifyLivePhoto", "verifyLivePhotoPreview", "livePhoto");
+
+window.openVerifyModal = function(type, id, name){
+  verifyTarget = { type, id, name };
+  verifyPendingImages = { nidFront: null, nidBack: null, livePhoto: null };
+  $("verifyTargetName").textContent = name || "—";
+  $("verifyNidFront").value = ""; $("verifyNidFrontPreview").innerHTML = "";
+  $("verifyNidBack").value = ""; $("verifyNidBackPreview").innerHTML = "";
+  $("verifyLivePhoto").value = ""; $("verifyLivePhotoPreview").innerHTML = "";
+  $("verifyMsg").style.display = "none";
+  $("verifyModal").style.display = "flex";
+};
+$("closeVerifyModal").addEventListener("click", ()=> $("verifyModal").style.display = "none");
+
+$("approveVerifyBtn").addEventListener("click", async ()=>{
+  const msgEl = $("verifyMsg");
+  msgEl.style.display = "none";
+  if(!verifyPendingImages.nidFront || !verifyPendingImages.nidBack || !verifyPendingImages.livePhoto){
+    msgEl.textContent = "⚠️ তিনটা ছবিই (NID সামনে, পেছনে, লাইভ ছবি) তুলতে হবে।";
+    msgEl.style.color = "#e2543d"; msgEl.style.display = "block";
+    return;
+  }
+  const btn = $("approveVerifyBtn");
+  btn.disabled = true; btn.textContent = "যাচাই হচ্ছে...";
+  try{
+    const collectionName = verifyTarget.type === "shop" ? "shops" : "riders";
+    await db.collection(collectionName).doc(verifyTarget.id).set({
+      isVerified: true,
+      verifiedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      verifiedBy: currentAgent.uid,
+      nidFrontImage: verifyPendingImages.nidFront,
+      nidBackImage: verifyPendingImages.nidBack,
+      livePhotoImage: verifyPendingImages.livePhoto
+    }, { merge: true });
+    $("verifyModal").style.display = "none";
+  }catch(e){
+    msgEl.textContent = "⚠️ ভেরিফাই করা যায়নি: " + e.message;
+    msgEl.style.color = "#e2543d"; msgEl.style.display = "block";
+  }finally{
+    btn.disabled = false; btn.textContent = "✅ Approve Account";
+  }
+});
 </script>
 </body>
 </html>
